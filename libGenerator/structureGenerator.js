@@ -5,8 +5,8 @@
 const path = require("path");
 const fs = require("fs");
 const glob = require("glob");
-const imageGenerator = require("image-thumbnail");
 const puppeteer = require("puppeteer");
+const sharp = require("sharp");
 
 const generateMissingThumbnails = false;
 
@@ -16,12 +16,18 @@ const getDirectories = (source) =>
     .filter((dirent) => dirent.isDirectory())
     .map((dirent) => dirent.name);
 
-const thumbnailOptions = {
-  width: 100,
-  height: 100,
-  responseType: "base64",
-  jpegOptions: { force: true, quality: 80 },
-};
+const generateImageThumbnail = async (source) =>
+  (
+    await sharp(fs.readFileSync(source), { failOnError: true })
+      .resize({
+        width: 100,
+        height: 100,
+        withoutEnlargement: true,
+        fit: "contain",
+      })
+      .jpeg({ force: true, quality: 80 })
+      .toBuffer()
+  ).toString("base64");
 
 const baseDirectory = path.resolve(__dirname, "../");
 
@@ -111,9 +117,8 @@ const process = async () => {
           try {
             newAsset.thumbnail =
               "data:image/jpeg;base64," +
-              (await imageGenerator(
-                path.resolve("../", relativePath),
-                thumbnailOptions
+              (await generateImageThumbnail(
+                path.resolve("../", relativePath)
               ));
           } catch (err) {
             console.error(err);
